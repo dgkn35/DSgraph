@@ -2,6 +2,8 @@
 #!/usr/bin/env python
 
 import pygtk
+from priodict import priorityDictionary
+
 #arayuz
 pygtk.require('2.0') 
 import gtk
@@ -31,6 +33,39 @@ class Base:#pencere sınıfı
         
     def main(self):
         gtk.main()
+        
+def Dijkstra(Graph,ilk,son=None):
+    
+    uzaklik={}#son uzakliklari tutacak
+    gelis={}#noktaya gelinen yeri tutar.
+    nodedist = priorityDictionary()#nodların yaklasik hesaplamasini tutar
+    
+    for node in nodedist:
+        uzaklik[node] = gelis[node]
+        if node == son:
+            break
+        for node2 in Graph:
+            sonrasininUzakligi = uzaklik[node] + Graph[node][node2]
+            if node2 in uzaklik:
+                if sonrasininUzakligi < uzaklik[node2]:
+                    raise ValueError 
+            elif node2 not in nodedist or sonrasininUzakligi < nodedist[node2]:
+                nodedist[node2] = sonrasininUzakligi
+                gelis[node2] = node 
+    
+    return (uzaklik,gelis)
+
+def enKisa(Graph,ilk,son):
+    yol = []
+    
+    uzaklik = Dijkstra(Graph, ilk, son)
+    while True:
+        yol.append(son)
+        if ilk == son:
+            break
+        son = uzaklik[son]
+    yol.reverse()
+    return yol 
         
         
 if __name__ == "__main__":
