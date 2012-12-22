@@ -9,8 +9,11 @@ pygtk.require('2.0')
 import gtk
 
 #Koseleri tutar
-vertices = {}
+graph = {}
 VertexCount=0
+
+secim = []
+
 
 #SABITLER
 DRAW_MARGIN = 10
@@ -20,7 +23,7 @@ DRAW_Y = 550
 RECT_SIZE = 20
 
 #Kose ekleme modunu acar
-isEkleOn = False
+mod =""
 
 class Base:#pencere sınıfı
     def kapat(self,widget,data=None):#Programı kapatmak icin handler
@@ -32,13 +35,26 @@ class Base:#pencere sınıfı
         print event.x, event.y
         
         #koselerin cakismasini onler
-        if event.x>DRAW_MARGIN and event.x<DRAW_X and \
+        if event.x>DRAW_MARGIN and event.x<DRAW_X-DRAW_MARGIN and \
         event.y>DRAW_MARGIN and event.y<DRAW_Y-DRAW_MARGIN and \
-        isEkleOn and self.checkVertex(event.x, event.y):
+        mod == "Ekle" and self.checkVertex(event.x, event.y):
             
             self.draw_rect(int(event.x),int(event.y))#koseyi ciz
-            vertices[VertexCount] = (event.x,event.y)#koseleri tutan sozluge ekle
-            VertexCount = len(vertices)#kose sayisini yeniden ayarla
+            liste = [(event.x,event.y),{}]
+            graph[VertexCount] = liste#koseleri tutan sozluge ekle
+            self.pango.set_text(str(VertexCount))
+            self.area.window.draw_layout(self.gc,int(event.x+4),int(event.y+2),self.pango)
+            VertexCount = len(graph)#kose sayisini yeniden ayarla
+#            color = gtk.gdk.color_parse("black")
+#            self.gc.set_rgb_fg_color(color)
+            
+        if mod == "Sec":
+            secilen = self.findVertex(event.x, event.y)
+            text = "Secilen: "
+            if secilen != None:
+                textnew=text + str(secilen)
+                self.lblSelected.set_text(textnew)
+                secim.append(secilen)
              
     def area_expose(self,area,event):#Cizim alaninin init metodudur.
         self.style = self.area.get_style()
@@ -48,44 +64,144 @@ class Base:#pencere sınıfı
     def draw_rect(self, x, y):#kose cizer.
         self.area.window.draw_rectangle(self.gc,False,x,y,RECT_SIZE,RECT_SIZE)
     
+    def draw_line(self,p1,p2):
+        self.area.window.draw_line(self.gc,p1[0],p1[1],p2[0],p2[1])
+        
     def checkVertex(self,x,y):#Koselerin cakismasini kontrol eder.
-        for i in vertices:
-            koord = vertices[i]
+        for i in graph:
+            koord = graph[i][0]
             if x<koord[0]+RECT_SIZE and x> koord[0]-RECT_SIZE and y<koord[1]+RECT_SIZE and y>koord[1]-RECT_SIZE:
                 return False
         return True
+  
+    def findVertex(self,x,y):
+        for i in graph:
+            koord = graph[i][0]
+            if x>koord[0] and x<koord[0]+RECT_SIZE and y>koord[1] and y<koord[1]+RECT_SIZE:
+                return i
+        return None
     
-    def ekle(self,widget):#kose ekleme modu switchi
-        global isEkleOn
-        if isEkleOn:
-            self.dugme_KoseEkle.set_label("Kose Ekle")
-            isEkleOn = False
+    def sec(self,widget):
+        global mod
+        self.Default()
+        if mod !="Sec":
+            mod = "Sec"
+            self.Default()
+            self.dugme_Sec.set_label("Secmeyi durdur")
+        elif mod == "Sec":
+            self.Default()
+            mod = ""
+
+    def drawKenar(self,bas,son,renk="black"):
+        pos1 = graph[bas][0]
+        pos2 = graph[son][0]
+        pos1 = (int(pos1[0]),int(pos1[1]))
+        pos2 = (int(pos2[0]),int(pos2[1]))
+        
+        dot1 = None
+        dot2 = None
+        
+        if pos1[0] < pos2[0] and pos1[1]<pos2[1]:
+            dot1 = (pos1[0]+RECT_SIZE,pos1[1]+RECT_SIZE)
+            dot2 = pos2
+        elif pos1[0] > pos2[0] and pos1[1]>pos2[1]:
+            dot1 = pos1
+            dot2 = (pos2[0]+RECT_SIZE,pos2[1]+RECT_SIZE)
+        elif pos1[0]<pos2[0] and pos1[1]>pos2[1]:
+            dot1 = (pos1[0]+RECT_SIZE,pos1[1])
+            dot2 = (pos2[0],pos2[1]+RECT_SIZE)
         else:
-            self.dugme_KoseEkle.set_label("Kose Eklemeyi Durdur!")
-            isEkleOn = True
+            dot1 = (pos1[0],pos1[1]+RECT_SIZE)
+            dot2 = (pos2[0]+RECT_SIZE,pos2[1])
+        
+        color = gtk.gdk.color_parse(renk)
+        self.gc.set_rgb_fg_color(color)
+        
+        self.draw_line(dot1,dot2)
+        color = gtk.gdk.color_parse("black")
+        self.gc.set_rgb_fg_color(color)
+        
+
+    def kenarEkle(self,widget):
+        global secim
+        if len(secim) <2:
+            msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Bu islem icin en az 2 secim\
+             yapmis olmak gerekmektedir!\n Sec tusunu aktif hale getirdikten sonra arka arkaya 2 secim yapin.")
+            msg.run()
+            msg.destroy()
+        elif self.weight.get_text_length()==0:
+            msg1 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Agirlik alani bos birakilmamalidir!")
+            msg1.run()
+            msg1.destroy()
+        else:
+            ilk = secim.pop()
+            for i in secim:
+                ikinci = secim.pop()
+                if ikinci !=ilk:
+                    break
+            if ikinci != None:
+                graph[ilk][1][ikinci]=int(self.weight.get_text())
+                graph[ikinci][1][ilk]=int(self.weight.get_text())
+                self.drawKenar(ilk, ikinci)
+            else:
+                msg2 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Surekli ayni koseyi secmemelisiniz!")
+                msg2.run()
+                msg2.destroy()
+                
+        secim = []
+            
+
+    def Default(self):
+        self.dugme_Sec.set_label("Sec")
+        self.dugme_KoseEkle.set_label("Kose Ekle")
+        self.lblSelected.set_label("Secilen: ")
+
+    def ekle(self,widget):#kose ekleme modu switchi
+        global mod
+        if mod != "Ekle":
+            mod = "Ekle"
+            self.Default()
+            self.dugme_KoseEkle.set_label("Kose Eklemeyi Durdur.")
+        elif mod == "Ekle":
+            self.Default()
+            mod =""
              
             
     def __init__(self):
         self.pencere = gtk.Window(gtk.WINDOW_TOPLEVEL)#pencere olustur
         self.pencere.set_position(gtk.WIN_POS_CENTER)#pencereyi hizala
         self.pencere.set_size_request(1024,600)#pencere boyutu ayarla
-        
-        self.dugme_KoseEkle = gtk.Button("Ekle")
-        self.dugme_KoseEkle.connect("clicked",self.ekle)
-        
-        self.vert = gtk.VBox(False)
-        
-        self.sabit = gtk.HBox()
-        self.sabit.pack_start(self.dugme_KoseEkle)
-        
         self.ebox = gtk.EventBox()
-        self.ebox.connect ('button-press-event', self.onclick)
         self.area = gtk.DrawingArea()
-        
+        self.vert = gtk.VBox(False)
+        self.Hori = gtk.HBox()
+        self.ebox.connect ('button-press-event', self.onclick)
         self.area.connect("expose-event",self.area_expose)
         self.ebox.add(self.area)
         
-        self.vert.pack_start(self.sabit,False,False,1)
+        self.pango = self.area.create_pango_layout("")
+        
+        self.dugme_KoseEkle = gtk.Button("Kose Ekle")
+        self.dugme_KoseEkle.connect("clicked",self.ekle)
+        
+        self.dugme_Sec = gtk.Button("Kose Sec")
+        self.dugme_Sec.connect("clicked",self.sec)
+        
+        self.weight = gtk.Entry()
+        
+        self.dugme_kenarEkle = gtk.Button("Kenar ekle")
+        self.dugme_kenarEkle.connect("clicked",self.kenarEkle)
+        
+        self.lblSelected = gtk.Label("Secilen:")
+        
+        
+        self.Hori.pack_start(self.dugme_KoseEkle)
+        self.Hori.pack_start(self.dugme_Sec)
+        self.Hori.pack_start(self.lblSelected)
+        self.Hori.pack_start(self.weight)
+        self.Hori.pack_start(self.dugme_kenarEkle)
+                
+        self.vert.pack_start(self.Hori,False,False,1)
         self.vert.pack_start(self.ebox,1)
         
         self.pencere.add(self.vert)
