@@ -45,9 +45,7 @@ class Base:#pencere sınıfı
             self.pango.set_text(str(VertexCount))
             self.area.window.draw_layout(self.gc,int(event.x+4),int(event.y+2),self.pango)
             VertexCount = len(graph)#kose sayisini yeniden ayarla
-#            color = gtk.gdk.color_parse("black")
-#            self.gc.set_rgb_fg_color(color)
-            
+
         if mod == "Sec":
             secilen = self.findVertex(event.x, event.y)
             text = "Secilen: "
@@ -91,6 +89,9 @@ class Base:#pencere sınıfı
         elif mod == "Sec":
             self.Default()
             mod = ""
+        
+    def dijksHandler(self):
+        pass
 
     def drawKenar(self,bas,son,renk="black"):
         pos1 = graph[bas][0]
@@ -100,24 +101,39 @@ class Base:#pencere sınıfı
         
         dot1 = None
         dot2 = None
+        weightPos = None
         
-        if pos1[0] < pos2[0] and pos1[1]<pos2[1]:
+        if pos1[0] < pos2[0] and pos1[1]<pos2[1]:# pos 1 sol üstte
             dot1 = (pos1[0]+RECT_SIZE,pos1[1]+RECT_SIZE)
             dot2 = pos2
-        elif pos1[0] > pos2[0] and pos1[1]>pos2[1]:
+            weightPos = (dot1[0]+RECT_SIZE+abs(dot1[0]-dot2[0])/2,
+                         dot1[1]+abs(dot1[1]-dot2[1])/2)
+        elif pos1[0] > pos2[0] and pos1[1]>pos2[1]:#pos 1 sağ altta
             dot1 = pos1
             dot2 = (pos2[0]+RECT_SIZE,pos2[1]+RECT_SIZE)
-        elif pos1[0]<pos2[0] and pos1[1]>pos2[1]:
+            weightPos = (pos2[0]+RECT_SIZE+abs(dot1[0]-dot2[0])/2,
+                         pos2[1]+RECT_SIZE+abs(dot1[1]-dot2[1])/2)
+        elif pos1[0]<pos2[0] and pos1[1]>pos2[1]:#pos 1 sol altta
             dot1 = (pos1[0]+RECT_SIZE,pos1[1])
             dot2 = (pos2[0],pos2[1]+RECT_SIZE)
-        else:
+            weightPos = (dot2[0]+RECT_SIZE-abs(dot1[0]-dot2[0])/2,
+                         dot2[1]+abs(dot1[1]-dot2[1])/2)
+        else: #pos 1 sağ üstte
             dot1 = (pos1[0],pos1[1]+RECT_SIZE)
             dot2 = (pos2[0]+RECT_SIZE,pos2[1])
+            weightPos = (dot1[0]+RECT_SIZE-abs(dot1[0]-dot2[0])/2,
+                         dot1[1]+abs(dot1[1]-dot2[1])/2)
+            
         
+         
         color = gtk.gdk.color_parse(renk)
         self.gc.set_rgb_fg_color(color)
         
         self.draw_line(dot1,dot2)
+        
+        self.pango.set_text(str(graph[bas][1][son]))
+        self.area.window.draw_layout(self.gc,weightPos[0],weightPos[1],self.pango)
+        
         color = gtk.gdk.color_parse("black")
         self.gc.set_rgb_fg_color(color)
         
@@ -192,6 +208,9 @@ class Base:#pencere sınıfı
         self.dugme_kenarEkle = gtk.Button("Kenar ekle")
         self.dugme_kenarEkle.connect("clicked",self.kenarEkle)
         
+        self.dugme_Dijkstra = gtk.Button("Dijkstra's")
+#        self.dugme_Dijkstra.connect("clicked",)
+        
         self.lblSelected = gtk.Label("Secilen:")
         
         
@@ -218,12 +237,13 @@ def Dijkstra(Graph,ilk,son=None):
     gelis={}#noktaya gelinen yeri tutar.
     nodedist = priorityDictionary()#nodların yaklasik hesaplamasini tutar
     
+    nodedist[ilk]=0
     for node in nodedist:
         uzaklik[node] = gelis[node]
         if node == son:
             break
         for node2 in Graph:
-            sonrasininUzakligi = uzaklik[node] + Graph[node][node2]
+            sonrasininUzakligi = uzaklik[node] + Graph[node][1][node2]
             if node2 in uzaklik:
                 if sonrasininUzakligi < uzaklik[node2]:
                     raise ValueError 
