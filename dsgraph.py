@@ -39,11 +39,10 @@ class Base:#pencere sınıfı
         event.y>DRAW_MARGIN and event.y<DRAW_Y-DRAW_MARGIN and \
         mod == "Ekle" and self.checkVertex(event.x, event.y):
             
-            self.draw_rect(int(event.x),int(event.y))#koseyi ciz
             liste = [(event.x,event.y),{}]
             graph[VertexCount] = liste#koseleri tutan sozluge ekle
-            self.pango.set_text(str(VertexCount))
-            self.area.window.draw_layout(self.gc,int(event.x+4),int(event.y+2),self.pango)
+            self.draw_rect(int(event.x),int(event.y),VertexCount)#koseyi ciz
+
             VertexCount = len(graph)#kose sayisini yeniden ayarla
 
         if mod == "Sec":
@@ -59,8 +58,12 @@ class Base:#pencere sınıfı
         self.gc = self.style.fg_gc[gtk.STATE_NORMAL]
         self.area.window.draw_rectangle(self.gc,False,DRAW_MARGIN,DRAW_MARGIN,DRAW_X,DRAW_Y)
         
-    def draw_rect(self, x, y):#kose cizer.
+    def draw_rect(self, x, y,i):#kose cizer.
+        i = str(i)
         self.area.window.draw_rectangle(self.gc,False,x,y,RECT_SIZE,RECT_SIZE)
+        self.pango.set_text(i)
+        self.area.window.draw_layout(self.gc,int(x+4),int(y+2),self.pango)
+
     
     def draw_line(self,p1,p2):
         self.area.window.draw_line(self.gc,p1[0],p1[1],p2[0],p2[1])
@@ -71,6 +74,18 @@ class Base:#pencere sınıfı
             if x<koord[0]+RECT_SIZE and x> koord[0]-RECT_SIZE and y<koord[1]+RECT_SIZE and y>koord[1]-RECT_SIZE:
                 return False
         return True
+    
+    def redraw(self,widget):#Redraws graph to drawing area
+        edges = {}
+        for i in graph:
+            dot1 = graph[i][0]
+            self.draw_rect(int(dot1[0]),int(dot1[1]),i)
+            for j in graph[i][1]:
+                if not j in edges:
+                    edges[i] = j
+        for i in edges:
+            self.drawKenar(i,edges[j])
+            
   
     def findVertex(self,x,y):
         for i in graph:
@@ -210,6 +225,9 @@ class Base:#pencere sınıfı
         
         self.dugme_Dijkstra = gtk.Button("Dijkstra's")
 #        self.dugme_Dijkstra.connect("clicked",)
+       
+        self.dugme_redraw = gtk.Button("Yenile")
+        self.dugme_redraw.connect("clicked",self.redraw)
         
         self.lblSelected = gtk.Label("Secilen:")
         
@@ -219,6 +237,7 @@ class Base:#pencere sınıfı
         self.Hori.pack_start(self.lblSelected)
         self.Hori.pack_start(self.weight)
         self.Hori.pack_start(self.dugme_kenarEkle)
+        self.Hori.pack_start(self.dugme_redraw)
                 
         self.vert.pack_start(self.Hori,False,False,1)
         self.vert.pack_start(self.ebox,1)
