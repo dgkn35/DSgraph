@@ -3,6 +3,8 @@
 
 import pygtk
 from priodict import priorityDictionary
+from operator import itemgetter
+from disjointSets import DisjointSet
 
 #arayuz
 pygtk.require('2.0') 
@@ -30,6 +32,22 @@ class Base:#pencere sınıfı
         print "Program kapatıldı!"
         gtk.main_quit()
         
+    def vertexSelectionControl(self,func):
+        global secim
+        if len(secim) <2:
+            msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Bu islem icin en az 2 secim\
+yapmis olmak gerekmektedir!\n Sec tusunu aktif hale getirdikten sonra arka arkaya 2 secim yapin.")
+            msg.run()
+            msg.destroy()
+            return False
+        elif self.weight.get_text_length()==0 and func == "edge":
+            msg1 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Agirlik alani bos birakilmamalidir!")
+            msg1.run()
+            msg1.destroy()
+            return False
+        else:
+            return True
+    
     def onclick(self, ebox, event):#mouse'un bulundugu noktayi belirler kose ekler 
         global VertexCount
         print event.x, event.y
@@ -47,7 +65,7 @@ class Base:#pencere sınıfı
 
         if mod == "Sec":
             secilen = self.findVertex(event.x, event.y)
-            text = "Secilen: "
+            text = "Son Secilen: "
             if secilen != None:
                 textnew=text + str(secilen)
                 self.lblSelected.set_text(textnew)
@@ -76,16 +94,14 @@ class Base:#pencere sınıfı
         return True
     
     def redraw(self,widget):#Redraws graph to drawing area
-        edges = {}
+        done = [] 
         for i in graph:
             dot1 = graph[i][0]
             self.draw_rect(int(dot1[0]),int(dot1[1]),i)
             for j in graph[i][1]:
-                if not j in edges:
-                    edges[i] = j
-        for i in edges:
-            self.drawKenar(i,edges[j])
-            
+                if not j in done:
+                    self.drawKenar(i, j)
+            done.append(i)
   
     def findVertex(self,x,y):
         for i in graph:
@@ -105,7 +121,48 @@ class Base:#pencere sınıfı
             self.Default()
             mod = ""
         
-    def dijksHandler(self):
+    def dijksHandler(self,widget):
+        global secim,graph
+        if self.vertexSelectionControl("dijkstra"):
+            secim.reverse()
+            ilk = secim[0]
+            for i in range(0,len(secim)):
+                ikinci = secim[i]
+                if ikinci !=ilk:
+                    break
+            if ikinci != None:
+                yol,uzaklik = enKisa(graph, ilk, ikinci)
+                
+                for i in range(0,len(yol)-1):
+                    d1,d2 = yol[i],yol[i+1]
+                    self.drawKenar(d1, d2, "red")
+                    
+                msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Mesafe:"+str(uzaklik)+"\nEn kisa yol :"+str(yol))
+                msg.run()
+                msg.destroy()
+        secim =[]
+    
+    def KruskalHandler(self,widget):
+        mst = kruskal(graph)
+        for i in mst:
+            self.drawKenar(i[0], i[1], "red")
+        
+    def DFSHandler(self,widget):
+        global secim
+        if secim != []:
+            start = secim.pop()
+            yol = DFS(graph,start)
+            
+#            for i in range(0,len(yol)-1):
+#                d1,d2 = yol[i],yol[i+1]
+#                self.drawKenar(d1, d2, "red")
+            msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Dolasma sirasi"+str(yol))
+            msg.run()
+            msg.destroy()
+        else:
+            msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Lutfen bir secim yapiniz")
+            msg.run()
+            msg.destroy()
         pass
 
     def drawKenar(self,bas,son,renk="black"):
@@ -152,40 +209,36 @@ class Base:#pencere sınıfı
         color = gtk.gdk.color_parse("black")
         self.gc.set_rgb_fg_color(color)
         
+    def reset(self,widget):
+        self.area.queue_draw()
 
     def kenarEkle(self,widget):
         global secim
-        if len(secim) <2:
-            msg = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Bu islem icin en az 2 secim\
-             yapmis olmak gerekmektedir!\n Sec tusunu aktif hale getirdikten sonra arka arkaya 2 secim yapin.")
-            msg.run()
-            msg.destroy()
-        elif self.weight.get_text_length()==0:
-            msg1 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Agirlik alani bos birakilmamalidir!")
-            msg1.run()
-            msg1.destroy()
-        else:
-            ilk = secim.pop()
-            for i in secim:
-                ikinci = secim.pop()
+        if self.vertexSelectionControl("edge"):
+            secim.reverse()
+            ilk = secim[0]
+            for i in range(0,len(secim)):
+                ikinci = secim[i]
                 if ikinci !=ilk:
                     break
-            if ikinci != None:
-                graph[ilk][1][ikinci]=int(self.weight.get_text())
-                graph[ikinci][1][ilk]=int(self.weight.get_text())
-                self.drawKenar(ilk, ikinci)
-            else:
-                msg2 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Surekli ayni koseyi secmemelisiniz!")
+            if ikinci in graph[ilk][1]:
+                msg2 = gtk.MessageDialog(None,0,gtk.MESSAGE_INFO,gtk.BUTTONS_OK,"Ayni yere ekleme yapamazsiniz.")
                 msg2.run()
                 msg2.destroy()
                 
-        secim = []
+            elif ikinci != None:
+                graph[ilk][1][ikinci]=int(self.weight.get_text())
+                graph[ikinci][1][ilk]=int(self.weight.get_text())
+                self.drawKenar(ilk, ikinci)
+                
+        secim =[]
             
 
     def Default(self):
         self.dugme_Sec.set_label("Sec")
         self.dugme_KoseEkle.set_label("Kose Ekle")
-        self.lblSelected.set_label("Secilen: ")
+        self.lblSelected.set_label("Son Secilen: ")
+        secim = []
 
     def ekle(self,widget):#kose ekleme modu switchi
         global mod
@@ -224,12 +277,21 @@ class Base:#pencere sınıfı
         self.dugme_kenarEkle.connect("clicked",self.kenarEkle)
         
         self.dugme_Dijkstra = gtk.Button("Dijkstra's")
-#        self.dugme_Dijkstra.connect("clicked",)
+        self.dugme_Dijkstra.connect("clicked",self.dijksHandler)
+       
+        self.dugme_Kruskal = gtk.Button("Kruskal's")
+        self.dugme_Kruskal.connect("clicked",self.KruskalHandler)
+       
+        self.dugme_DFS = gtk.Button("DFS")
+        self.dugme_DFS.connect("clicked",self.DFSHandler)
        
         self.dugme_redraw = gtk.Button("Yenile")
         self.dugme_redraw.connect("clicked",self.redraw)
         
-        self.lblSelected = gtk.Label("Secilen:")
+        self.dugme_temizle = gtk.Button("Temizle")
+        self.dugme_temizle.connect("clicked",self.reset)
+        
+        self.lblSelected = gtk.Label("Son Secilen:")
         
         
         self.Hori.pack_start(self.dugme_KoseEkle)
@@ -237,7 +299,11 @@ class Base:#pencere sınıfı
         self.Hori.pack_start(self.lblSelected)
         self.Hori.pack_start(self.weight)
         self.Hori.pack_start(self.dugme_kenarEkle)
+        self.Hori.pack_start(self.dugme_Dijkstra)
+        self.Hori.pack_start(self.dugme_Kruskal)
+        self.Hori.pack_start(self.dugme_DFS)
         self.Hori.pack_start(self.dugme_redraw)
+        self.Hori.pack_start(self.dugme_temizle)
                 
         self.vert.pack_start(self.Hori,False,False,1)
         self.vert.pack_start(self.ebox,1)
@@ -258,10 +324,10 @@ def Dijkstra(Graph,ilk,son=None):
     
     nodedist[ilk]=0
     for node in nodedist:
-        uzaklik[node] = gelis[node]
+        uzaklik[node] = nodedist[node]
         if node == son:
             break
-        for node2 in Graph:
+        for node2 in Graph[node][1]:
             sonrasininUzakligi = uzaklik[node] + Graph[node][1][node2]
             if node2 in uzaklik:
                 if sonrasininUzakligi < uzaklik[node2]:
@@ -275,15 +341,59 @@ def Dijkstra(Graph,ilk,son=None):
 def enKisa(Graph,ilk,son):
     yol = []
     
-    uzaklik = Dijkstra(Graph, ilk, son)
+    uzaklik , gelis = Dijkstra(Graph, ilk, son)
     while True:
         yol.append(son)
         if ilk == son:
             break
-        son = uzaklik[son]
-    yol.reverse()
-    return yol 
+        son = gelis[son]
+#    yol.reverse()
+    return yol ,uzaklik
+
+def kruskal(Graph):
+    #def kruskal( nodes, edges ):
+    nodes = []
+    edges = []
+    
+    for i in Graph:
+        nodes.append(i)
+        for j in Graph[i][1]:
+            tup = (i,j,Graph[i][1][j])
+            edges.append(tup)
         
+    forest = DisjointSet()
+    mst = []
+    for k in nodes:
+        forest.add( k )
+ 
+    size = len(nodes) - 1
+ 
+    for e in sorted( edges, key=itemgetter( 2 ) ):
+        n1, n2, _ = e
+        t1 = forest.find(n1)
+        t2 = forest.find(n2)
+        if t1 != t2:
+            mst.append(e)
+            size -= 1
+            if size == 0:
+                return mst
+         
+            forest.union(t1, t2)
+    
+def DFS(graph, start, path=[]):
+    q=[start]
+    while q:
+        v=q.pop(0)
+        if v not in path:
+            path=path+[v]
+            
+            liste = []
+            for i in graph[v][1]:
+                liste.append(i)
+            q=liste+q
+            
+    print path
+    return path
         
 if __name__ == "__main__":
     base = Base()
