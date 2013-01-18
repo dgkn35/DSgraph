@@ -1,9 +1,3 @@
-'''
-Created on Dec 27, 2012
-
-@author: efe
-'''
-
 class DisjointSet(dict):
     def add(self, item):
         self[item] = item
